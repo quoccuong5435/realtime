@@ -4,6 +4,9 @@ class AuthController
     private Config $config;
     public function __construct()
     {
+        if (!isset($_SESSION)) {
+            session_start();
+        }
         $this->config = new Config();
     }
 
@@ -21,13 +24,13 @@ class AuthController
         $logout_id = mysqli_real_escape_string($db,$_GET['logout_id']);
         if (isset($logout_id)) {
             $status = "0";
-            $update_query = mysqli_query($db,"UPDATE user set status = '{$status}' WHERE unique_id = {$result['unique_id']}");
+            $update_query = mysqli_query($db,"UPDATE user set status = '{$status}' WHERE unique_id = {$logout_id}");
             if ($update_query) {
                 session_unset();
                 session_destroy();
-                header("Location:login.php");
+                header("Location:../login.php");
             }else {
-                header("Location:users.php");
+                header("Location:../users.php");
             }
         }
     }
@@ -46,7 +49,7 @@ class AuthController
             $error = "Email no match format";
         }
 
-        $query  = mysqli_query($db, "SELECT * FROM user WHERE email ='($email)'" );
+        $query  = mysqli_query($db, "SELECT * FROM user WHERE email ='{$email}'" );
         if (mysqli_num_rows($query) > 0) {
             $error = "Email exit";
         }
@@ -59,15 +62,19 @@ class AuthController
             $img_explode = explode('.', $img_name);
             $img_ext = end($img_explode);
 
-            $extensions = ['jpeg', 'png', 'png'];
+            $extensions = ['jpeg', 'png', 'jpg'];
 
             if (!in_array($img_ext, $extensions)) {
-                $error = "Import Image Only";
+                $error = "Import Image Only Format";
             }
 
-            $type = ['images/jpeg', 'images/png' , 'images/jpg'];
+            $type = ['image/jpeg', 'image/png' , 'image/jpg'];
             if (!in_array($img_type, $type)) {
                 $error = "Import Image Only";
+            }
+            if (!empty($error)) {
+                echo $error;
+                return;
             }
 
             $time = time();
@@ -92,25 +99,23 @@ class AuthController
                 }
                 $insert_query = mysqli_query($this->config->connect(),  "INSERT INTO user(`".implode("`,`", $keys)."`) VALUES('".implode("','", $values)."')");
                 if (!$insert_query) {
-                    $error = "Register fail";
+                    echo "Register fail";
+                    return;
                 }
             }
 
             $query_2  = mysqli_query($db, "SELECT * FROM user WHERE email ='${email}'" );
-            if (!mysqli_num_rows($query) > 0) {
-                $result = mysqli_fetch_assoc($query_2);
-                if ($result) {
-                    $_SESSION['unique_id'] = $result['unique_id'];
-                }
-            }else {
-                $error = "Email exit";
+            if (!mysqli_num_rows($query_2) > 0) {
+               echo "Email no exit";
+               return;
             }
-
-        }
-
-        if (!empty($error)) {
-            echo $error;
+            $result = mysqli_fetch_assoc($query_2);
+            if ($result) {
+                $_SESSION['unique_id'] = $result['unique_id'];
+            }
+            echo "success";
             return;
+
         }
     }
 
@@ -124,7 +129,7 @@ class AuthController
             $error = "Field Require";
         }
 
-        $query  = mysqli_query($db, "SELECT * FROM user WHERE email ='($email)'" );
+        $query  = mysqli_query($db, "SELECT * FROM user WHERE email ='{$email}'" );
         if (mysqli_num_rows($query) == 0) {
             $error = "Email not exit";
         }
@@ -134,17 +139,17 @@ class AuthController
             $error = "Password no correct";
         }
 
-        $status =  "1";
-        $update_query = mysqli_query($db,"UPDATE user set status = '{$status}' WHERE unique_id = {$result['unique_id']}");
-        if ($update_query) {
-            $_SESSION['unique_id'] = $result['unique_id'];
-            echo "Login success";
-        }else {
-            $error = "Login fail";
-        }
-
         if (!empty($error)) {
             return $error;
+        }
+
+        $status =  "1";
+        $update_query = mysqli_query($db,"UPDATE user set status = '${status}' WHERE unique_id = {$result['unique_id']}");
+        if ($update_query) {
+            $_SESSION['unique_id'] = $result['unique_id'];
+            echo "success";
+        }else {
+            echo  "Login fail";
         }
     }
 }
